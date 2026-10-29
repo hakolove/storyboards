@@ -358,18 +358,19 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rail.classList.cont
 </script><div id="syncbar" style="position:fixed;right:16px;top:16px;z-index:9999;display:flex;gap:8px;flex-wrap:wrap">
 <button id="syncBtn" style="background:#e3a24a;color:#111;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer">同步给助手</button>
 <button id="copyBtn" style="background:#1d2129;color:#e8e2d6;border:1px solid #3a3f48;border-radius:8px;padding:10px 14px;cursor:pointer">复制选择结果</button></div>
-<script>(function(){var REPO='hakolove/storyboards',PROJ='beyond-the-swipe',VER='v2',KEY='framethrower-canvas-beyond-the-swipe-v2';
+<script>(function(){var PROJ='beyond-the-swipe',VER='v2',KEY='framethrower-canvas-beyond-the-swipe-v2';
 function payload(){var s={};try{s=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
 var adds=(s.additions||[]).map?(s.additions||[]):Object.values(s.additions||{});
-adds=JSON.parse(JSON.stringify(adds,function(k,v){return typeof v==='string'&&v.slice(0,5)==='data:'?'[image '+Math.round(v.length/1024)+'KB omitted]':v}));
+adds=JSON.parse(JSON.stringify(adds,function(k,v){return v}));
 return {schema:'storyboard-sync/1',project:PROJ,version:VER,revision:s.revision||null,exportedAt:new Date().toISOString(),choices:s.choices||{},notes:s.notes||{},additions:adds}}
 function copy(t){if(navigator.clipboard)return navigator.clipboard.writeText(t).catch(function(){prompt('复制下面内容',t)});prompt('复制下面内容',t);return Promise.resolve()}
 document.getElementById('copyBtn').onclick=function(){copy(JSON.stringify(payload())).then(function(){alert('已复制选择结果 JSON')})};
-document.getElementById('syncBtn').onclick=function(){var p=payload(),j=JSON.stringify(p),title='sync: '+PROJ+' '+VER+' '+p.exportedAt;
-var body='```json\n'+j+'\n```',url='https://github.com/'+REPO+'/issues/new?labels=sync&title='+encodeURIComponent(title)+'&body='+encodeURIComponent(body);
-if(url.length<=7500){window.open(url,'_blank');return}
-copy(j).then(function(){var b='JSON 太长，已复制到剪贴板。请把它粘贴到下面的 json 代码块里，然后点 Submit。\n\n```json\n（在此粘贴）\n```';
-window.open('https://github.com/'+REPO+'/issues/new?labels=sync&title='+encodeURIComponent(title)+'&body='+encodeURIComponent(b),'_blank')})}})();</script>
+document.getElementById('syncBtn').onclick=function(){var b=this,p=payload(),j=JSON.stringify(p);
+if(j.length>1000000){p.additions=JSON.parse(JSON.stringify(p.additions,function(k,v){return typeof v==='string'&&v.slice(0,5)==='data:'?'[image omitted]':v}));j=JSON.stringify(p)}
+b.disabled=true;b.textContent='同步中…';
+fetch('https://storyboard-sync.hakolove.workers.dev/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:j}).then(function(r){return r.json().then(function(d){if(!r.ok||!d.ok)throw new Error(d.error||r.status);return d})})
+.then(function(){msg('已同步，告诉助手一声即可')}).catch(function(){copy(j).then(function(){msg('同步失败，已复制选择结果，请粘贴发给助手')})}).finally(function(){b.disabled=false;b.textContent='同步给助手'})};
+function msg(t){var m=document.getElementById('syncToast');if(!m){m=document.createElement('div');m.id='syncToast';m.style.cssText='position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:10001;background:#e3a24a;color:#111;padding:12px 18px;border-radius:10px;font-weight:700;box-shadow:0 8px 24px #0008;max-width:90vw;text-align:center';document.body.appendChild(m)}m.textContent=t;m.style.display='block';clearTimeout(m._t);m._t=setTimeout(function(){m.style.display='none'},3500)}})();</script>
 <style id="mobilefeed">@media(max-width:768px){
 #syncbar{position:fixed!important;top:0!important;right:0!important;left:0;z-index:10000;padding:8px 10px;background:rgba(13,15,18,.94);backdrop-filter:blur(6px);border-bottom:1px solid #2a2e35;justify-content:stretch}
 #syncbar button{flex:1 1 0;min-height:44px;font-size:15px}
